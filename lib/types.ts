@@ -7,6 +7,9 @@ export interface BlogPost {
   excerpt?: string;
   published: boolean;
   content?: string; // Markdown content
+  language?: string; // 'en' or 'zh'
+  originalId?: string; // ID of the original post if this is a translation
+  summary?: string; // AI Summary
 }
 
 export interface NotionPage {
@@ -28,6 +31,16 @@ export interface NotionPage {
       checkbox: boolean;
     };
     Excerpt: {
+      rich_text: Array<{ plain_text: string }>;
+    };
+    // For translations
+    Language?: {
+      select: { name: string };
+    };
+    Original_ID?: {
+      rich_text: Array<{ plain_text: string }>;
+    };
+    Summary?: {
       rich_text: Array<{ plain_text: string }>;
     };
   };

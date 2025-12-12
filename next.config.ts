@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "export",
+  // output: "export", // Commented out for Cloudflare Pages (next-on-pages)
   images: {
     unoptimized: true,
     remotePatterns: [

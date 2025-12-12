@@ -31,6 +31,35 @@ Check the \`README.md\` for detailed instructions.
 const getNotionClient = () => {
   const apiKey = process.env.NOTION_API_KEY;
   if (!apiKey) return null;
+  
+  // Custom fetch to ignore SSL errors (development only or specific network issues)
+  const customFetch = (url: string, options: any) => {
+    return fetch(url, {
+        ...options,
+        // @ts-ignore - This is a Node.js specific option for fetch
+        dispatcher: new (require('undici').Agent)({
+            connect: {
+                rejectUnauthorized: false
+            }
+        })
+    });
+  };
+
+  // Only use custom fetch if we are in a Node environment (Next.js server side)
+  if (typeof window === 'undefined') {
+      try {
+          // Check if undici is available (built-in in newer Node or Next.js)
+          require('undici');
+          return new Client({ 
+              auth: apiKey,
+              fetch: customFetch
+          });
+      } catch (e) {
+          // Fallback to default
+          return new Client({ auth: apiKey });
+      }
+  }
+
   return new Client({ auth: apiKey });
 };
 
@@ -64,9 +93,27 @@ export const getPublishedPosts = async (): Promise<BlogPost[]> => {
       ],
     });
 
-    const posts = response.results.map((page: any) => {
+    let posts = response.results.map((page: any) => {
       return parseNotionPage(page);
     });
+
+    // Fetch translations if configured
+    const translationsDbId = process.env.NOTION_TRANSLATIONS_DATABASE_ID;
+    if (translationsDbId) {
+      try {
+        const transResponse = await notion.databases.query({
+          database_id: translationsDbId,
+          sorts: [{ property: "Date", direction: "descending" }],
+        });
+        const transPosts = transResponse.results.map((page: any) => parseNotionPage(page));
+        posts = [...posts, ...transPosts];
+      } catch (err) {
+        console.warn("Failed to fetch translations:", err);
+      }
+    }
+
+    // Sort combined posts by date
+    posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return posts;
   } catch (error: any) {
@@ -126,7 +173,7 @@ export const getPostBySlug = async (slug: string): Promise<BlogPost | null> => {
   try {
     // If querying specific slug, we assume columns exist. 
     // If not, it will fail and return null/mock.
-    const response = await notion.databases.query({
+    let response = await notion.databases.query({
       database_id: databaseId,
       filter: {
         and: [
@@ -145,6 +192,27 @@ export const getPostBySlug = async (slug: string): Promise<BlogPost | null> => {
         ],
       },
     });
+
+    // If not found in main DB, check Translations DB
+    if (response.results.length === 0) {
+      const translationsDbId = process.env.NOTION_TRANSLATIONS_DATABASE_ID;
+      if (translationsDbId) {
+         try {
+           const transResponse = await notion.databases.query({
+             database_id: translationsDbId,
+             filter: {
+               property: "Slug",
+               rich_text: { equals: slug }
+             }
+           });
+           if (transResponse.results.length > 0) {
+             response = transResponse;
+           }
+         } catch (e) {
+           console.warn("Failed to query translations DB", e);
+         }
+      }
+    }
 
     if (response.results.length === 0) {
       // If it's the setup post, return it manually
@@ -198,17 +266,42 @@ export const getPageContent = async (pageId: string): Promise<string> => {
   }
 };
 
-const parseNotionPage = (page: any): BlogPost => {
+  const parseNotionPage = (page: any): BlogPost => {
   const props = page.properties as NotionPage["properties"];
   
-  // Safe access to properties that might be missing
+  const rawSlug = props.Slug?.rich_text?.[0]?.plain_text || "untitled";
+  // Sanitize slug: remove special chars, spaces to hyphens, lowercase
+  const slug = rawSlug
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fa5\-]/g, '-') // Allow Chinese chars, numbers, letters, hyphens
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  const rawTitle = props.Name?.title?.[0]?.plain_text || "Untitled";
+  // Clean up potential AI translation artifacts
+  const title = rawTitle
+    .replace(/^The translation of ["']?.*?["']? (in \w+ )?is:?\s*/i, '')
+    .replace(/^Translation:?\s*/i, '')
+    .replace(/^Translated title:?\s*/i, '')
+    .replace(/^Here is the translation:?\s*/i, '')
+    .replace(/^"|"$/g, '')
+    .trim();
+
+  // Extract Language and Original_ID for filtering
+  const language = props.Language?.select?.name || 'en'; // Default to 'en' for main DB
+  const originalId = props.Original_ID?.rich_text?.[0]?.plain_text || page.id; // For main DB, originalId is its own ID
+  const summary = props.Summary?.rich_text?.[0]?.plain_text || "";
+
   return {
     id: page.id,
-    slug: props.Slug?.rich_text?.[0]?.plain_text || "untitled",
-    title: props.Name?.title?.[0]?.plain_text || "Untitled",
+    slug: slug || "untitled",
+    title: title,
     date: props.Date?.date?.start || new Date().toISOString(),
     tags: props.Tags?.multi_select?.map((tag) => tag.name) || [],
     excerpt: props.Excerpt?.rich_text?.[0]?.plain_text || "",
     published: props.Published?.checkbox || false,
+    language,
+    originalId,
+    summary
   };
 };

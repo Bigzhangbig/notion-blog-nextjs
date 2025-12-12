@@ -5,6 +5,7 @@ pages_build_output_dir = "out"
 
 [vars]
 # Variables will be set in the Cloudflare Dashboard for security
+NOTION_TRANSLATIONS_DATABASE_ID = "2c7148e0-41ac-81b8-af3a-c7cfa2f2b4c1"
 
 [ai]
 binding = "AI"

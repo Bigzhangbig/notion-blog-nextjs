@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import { getPostBySlug, getPublishedPosts } from "@/lib/notion";
 import GiscusComments from "@/components/GiscusComments";
 import AISummary from "@/components/AISummary";
+import TranslateButton from "@/components/TranslateButton";
+import BlogPostHeader from "@/components/BlogPostHeader";
 import { calculateReadingStats } from "@/lib/utils";
 import "highlight.js/styles/github-dark.css";
 import Image from "next/image";
@@ -35,34 +36,16 @@ export default async function BlogPostPage({
 
   return (
     <main className="container mx-auto px-4 py-12 max-w-3xl">
-      <Link
-        href="/"
-        className="text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 mb-8 inline-block"
-      >
-        ← Back to Home
-      </Link>
+      <BlogPostHeader 
+        title={post.title} 
+        date={post.date} 
+        wordCount={wordCount} 
+        readingTime={readingTime} 
+        tags={post.tags} 
+      />
 
       <article className="prose dark:prose-invert max-w-none">
-        <header className="mb-8 not-prose">
-          <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
-          <div className="flex items-center gap-4 text-gray-500 text-sm">
-            <time>{new Date(post.date).toLocaleDateString()}</time>
-            <div className="flex items-center gap-1">
-              <span>{wordCount} words</span>
-              <span>•</span>
-              <span>{readingTime} min read</span>
-            </div>
-            <div className="flex gap-2">
-              {post.tags.map((tag) => (
-                <span key={tag} className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-        </header>
-
-        <AISummary content={post.content || ""} />
+        <AISummary content={post.content || ""} articleId={post.id} initialSummary={post.summary} />
 
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
@@ -94,6 +77,8 @@ export default async function BlogPostPage({
         >
           {post.content || ""}
         </ReactMarkdown>
+
+        <TranslateButton articleId={post.id} title={post.title} />
       </article>
 
       <div className="mt-16 pt-8 border-t border-gray-200 dark:border-gray-800">
