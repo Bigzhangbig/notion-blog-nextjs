@@ -1,36 +1,110 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Notion Blog with Cloudflare Workers & Next.js
 
-## Getting Started
+A complete personal blog system powered by Notion as a CMS, Next.js for the frontend, and Cloudflare Workers (Pages) for global deployment. Features automatic Markdown backups to GitHub and Giscus comments.
 
-First, run the development server:
+## 🏗 Architecture
+
+- **CMS**: Notion (Official API)
+- **Frontend**: Next.js 16 (App Router)
+- **Deployment**: Cloudflare Pages (via `@cloudflare/next-on-pages` adapter)
+- **Comments**: GitHub Discussions (via Giscus)
+- **Backup**: Automated Markdown backup to private GitHub repo via Cron Trigger
+
+## 🚀 Getting Started
+
+### 1. Prerequisites
+- Node.js 18+
+- A Notion Account
+- A Cloudflare Account
+- A GitHub Account
+
+### 2. Notion Setup
+1. Create a new Integration at [Notion Developers](https://www.notion.so/my-integrations).
+2. Get the **Internal Integration Token** (`NOTION_API_KEY`).
+3. Create a new Database in Notion with the following properties:
+   - `Name` (Title)
+   - `Slug` (Text) - *Unique URL identifier*
+   - `Date` (Date)
+   - `Tags` (Multi-select)
+   - `Published` (Checkbox)
+   - `Excerpt` (Text)
+4. Share the database with your integration (Three dots > Connect to > Select your integration).
+5. Get the **Database ID** from the URL.
+
+### 3. Environment Configuration
+Copy `.env.example` to `.env` and fill in the values:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> **Note**: For Chinese documentation, please refer to [README_zh.md](README_zh.md).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. Local Development
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev
+```
 
-## Learn More
+Visit `http://localhost:3000`.
 
-To learn more about Next.js, take a look at the following resources:
+## 🔄 Automated Backup Setup
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The system includes an API endpoint (`/api/backup`) that fetches all published posts and commits them as Markdown files to a GitHub repository.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **GitHub Setup**:
+   - Create a private repository for backups.
+   - Generate a Personal Access Token (Classic) with `repo` scope.
+   - Set `GITHUB_TOKEN`, `GITHUB_OWNER`, `GITHUB_REPO` in environment variables.
 
-## Deploy on Vercel
+2. **Scheduling**:
+   - Deploy the project to Cloudflare Pages.
+   - In Cloudflare Dashboard, set up a **Cron Trigger** (or use a separate Worker) to make a GET request to `https://your-blog.pages.dev/api/backup` with the header `Authorization: Bearer <YOUR_BACKUP_SECRET_TOKEN>`.
+   - *Alternative*: Use GitHub Actions to curl this endpoint daily.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 💬 Comments Setup (Giscus)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Enable **Discussions** in your public GitHub repository.
+2. Install the [Giscus App](https://github.com/apps/giscus).
+3. Visit [giscus.app](https://giscus.app) to generate your configuration.
+4. Update `components/GiscusComments.tsx` with your `repo`, `repoId`, and `categoryId`.
+
+## 📦 Deployment
+### Option A: Cloudflare Pages (Recommended)
+1. Push this code to a GitHub repository.
+2. Log in to Cloudflare Dashboard > Pages > Connect to Git.
+3. Select your repository.
+4. **Build Settings**:
+   - Framework Preset: **Next.js**
+   - Build Command: `npx @cloudflare/next-on-pages@1`
+   - Output Directory: `.vercel/output/static`
+   - Compatibility Flags: `nodejs_compat`
+5. **Environment Variables**: Add all variables from `.env` to the Pages project settings.
+
+### Option B: Vercel
+1. Push to GitHub.
+2. Import project in Vercel Dashboard.
+3. Vercel automatically detects Next.js.
+4. Add environment variables.
+5. Deploy.
+
+### Option C: Deno Deploy
+1. Push to GitHub.
+2. Link repository in Deno Deploy Dashboard.
+3. Deno automatically detects Next.js.
+4. Configure environment variables.
+
+## 🧪 Testing
+
+- **Notion Sync**: Add a post in Notion, refresh the local dev server.
+- **Backup**: Send a GET request to `/api/backup` with the secret token.
+  ```bash
+  curl -H "Authorization: Bearer secret" http://localhost:3000/api/backup
+  ```
+
+## 🛠 Tech Stack Details
+- **Next.js 16**: Using App Router and Server Components for optimal performance.
+- **Tailwind CSS**: For styling.
+- **notion-to-md**: Converts Notion blocks to Markdown for portable backups.
+- **react-markdown**: Renders Markdown safely.
