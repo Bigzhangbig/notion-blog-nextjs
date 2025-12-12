@@ -7,10 +7,10 @@ export default function GiscusComments() {
     <div className="mt-10 pt-10 border-t border-gray-200 dark:border-gray-800">
       <Giscus
         id="comments"
-        repo="YOUR_GITHUB_USERNAME/YOUR_REPO_NAME" // User needs to configure this
-        repoId="YOUR_REPO_ID" // User needs to configure this
+        repo="Bigzhangbig/notion-blog-nextjs"
+        repoId="R_kgDOQndsSQ"
         category="Announcements"
-        categoryId="YOUR_CATEGORY_ID"
+        categoryId="DIC_kwDOQndsSc4Czs0e"
         mapping="pathname"
         reactionsEnabled="1"
         emitMetadata="0"
