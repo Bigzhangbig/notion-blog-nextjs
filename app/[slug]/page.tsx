@@ -5,6 +5,8 @@ import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import { getPostBySlug, getPublishedPosts } from "@/lib/notion";
 import GiscusComments from "@/components/GiscusComments";
+import AISummary from "@/components/AISummary";
+import { calculateReadingStats } from "@/lib/utils";
 import "highlight.js/styles/github-dark.css";
 import Image from "next/image";
 
@@ -29,6 +31,8 @@ export default async function BlogPostPage({
     notFound();
   }
 
+  const { wordCount, readingTime } = calculateReadingStats(post.content || "");
+
   return (
     <main className="container mx-auto px-4 py-12 max-w-3xl">
       <Link
@@ -43,6 +47,11 @@ export default async function BlogPostPage({
           <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
           <div className="flex items-center gap-4 text-gray-500 text-sm">
             <time>{new Date(post.date).toLocaleDateString()}</time>
+            <div className="flex items-center gap-1">
+              <span>{wordCount} words</span>
+              <span>•</span>
+              <span>{readingTime} min read</span>
+            </div>
             <div className="flex gap-2">
               {post.tags.map((tag) => (
                 <span key={tag} className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
@@ -52,6 +61,8 @@ export default async function BlogPostPage({
             </div>
           </div>
         </header>
+
+        <AISummary content={post.content || ""} />
 
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
